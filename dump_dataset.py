@@ -42,6 +42,59 @@ ideal_df.to_sql("ideal_functions", conn, if_exists="replace", index=False)
 
 
 
-# 关闭连接
-conn.close()
+
 print("数据加载完成！")
+
+def dump_unit_test():
+    print("===============performing unit test================")
+    train_df = pd.read_csv("/Users/lincong/Desktop/python_course/assignment/Dataset/train.csv")
+    cursor.execute("SELECT * FROM train_data LIMIT 1;")
+    row = cursor.fetchone()
+    expected_row = train_df.iloc[0]  # 获取 CSV 第一行数据并转换成元组
+    sanity_check = True
+    for i in range(len(row)):
+        if row[i] != expected_row.iloc[i]:
+            sanity_check == False
+            break
+
+    if not sanity_check:
+        print("train_df unit test failed. Program exit.")
+        exit()
+    
+    train_df = pd.read_csv("/Users/lincong/Desktop/python_course/assignment/Dataset/test.csv")
+    cursor.execute("SELECT * FROM test_data LIMIT 1;")
+    row = cursor.fetchone()
+    expected_row = test_df.iloc[0]  # 获取 CSV 第一行数据并转换成元组
+    sanity_check = True
+    for i in range(len(row)):
+        if row[i] != expected_row.iloc[i]:
+            sanity_check == False
+            break
+
+    if not sanity_check:
+        print("test_data unit test failed. Program exit.")
+        exit()
+
+    train_df = pd.read_csv("/Users/lincong/Desktop/python_course/assignment/Dataset/ideal.csv")
+    cursor.execute("SELECT * FROM ideal_functions LIMIT 1;")
+    row = cursor.fetchone()
+    expected_row = ideal_df.iloc[0]  # 获取 CSV 第一行数据并转换成元组
+    sanity_check = True
+    for i in range(len(row)):
+        if row[i] != expected_row.iloc[i]:
+            sanity_check == False
+            break
+
+    if not sanity_check:
+        print("ideal_df unit test failed. Program exit.")
+        exit()
+
+    else:
+        print("unit test passed!")
+
+    print("===================================================")
+    
+dump_unit_test()
+
+
+conn.close()

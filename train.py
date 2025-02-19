@@ -32,7 +32,9 @@ class Trainer():
             # 记录当前训练数据对应的最优理想函数
             best_functions[y_train_col] = best_function
             print(f"Training function: {y_train_col} the best matched function is {best_function}, MSE = {min_mse:.6f}")
+        return best_functions
 
+    def dump_ideal(self, best_functions):
         # 创建匹配表（如果不存在）
         self.db.cursor.execute("""
         CREATE TABLE IF NOT EXISTS best_function_mapping (
@@ -55,11 +57,41 @@ class Trainer():
         print("Best matched funcs save in dataset！")
 
 def main():
+    print("================performing training=================")
     db_connector =DBConnector(db_path="/Users/lincong/Desktop/python_course/assignment/Dataset/functions.db")
     train_loader = TrainDataloader(db_connector)
     function_loader =FunctionDataloader(db_connector)
     
     trainer = Trainer(db_connector, train_loader, function_loader)
-    trainer.train()
+    best_functions = trainer.train()
+    trainer.dump_ideal(best_functions)
+
+def train_unit_test():
+    print("===============performing unit test================")
+    db_connector =DBConnector(db_path="/Users/lincong/Desktop/python_course/assignment/Dataset/functions.db")
+    fake_train_loader = FunctionDataloader(db_connector)
+    function_loader =FunctionDataloader(db_connector)
+    
+    expected_func = {'y1': 'y1', 'y2': 'y2', 'y3': 'y3', 'y4': 'y4'}
+
+    
+    trainer = Trainer(db_connector, fake_train_loader, function_loader)
+    best_functions = trainer.train()
+
+    sanity_check = True
+    for key, value in expected_func.items():
+        if best_functions[key] != expected_func[key]:
+            sanity_check = False
+            break
+
+    if sanity_check:
+        print("unit test passed!")
+    else:
+        print("unit test failed. Program exit.")
+        exit(0)
+    print("====================================================")
+
+
+train_unit_test()
 
 main()
