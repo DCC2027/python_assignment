@@ -4,6 +4,8 @@ import numpy as np
 from loader import *
 
 class Trainer():
+    """_summary_
+    """
     def __init__(self, db_connector, train_loader, function_loader):
         self.db = db_connector
         self.train_loader = train_loader
