@@ -1,4 +1,3 @@
-import sqlite3
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
@@ -35,34 +34,19 @@ class Plotter:
         self.test_mapping_df = test_mapping_df
         self.ideal_df = ideal_df
 
-    # def plot_error_histogram(self):
-    #     """绘制误差直方图"""
-    #     delta_y = self.test_mapping_df["Delta_Y"]
-    #     plt.figure(figsize=(8, 6))
-    #     plt.hist(delta_y, bins=20, color="blue", alpha=0.7)
-    #     plt.xlabel("Deviation Delta_Y")
-    #     plt.ylabel("Quantity")
-    #     plt.title("Deviation Distribution")
-    #     plt.show()
-
     def plot_test_vs_ideal(self, unmatched_test_df):
         """绘制测试数据 vs. 匹配理想函数"""
         x_vals = self.test_mapping_df["X"].values
         y_test_vals = self.test_mapping_df["Y"].values
-        ideal_functions = self.test_mapping_df["Ideal_Function"].values
-        x_vals_unmatch = unmatched_test_df["X"].values
-        y_vals_unmatch = unmatched_test_df["Y_test"].values
+        x_vals_to_match = unmatched_test_df["X"].values
+        y_vals_to_match = unmatched_test_df["Y_test"].values
+        y_ideal_vals = self.test_mapping_df["Best_ideal_y"].values
 
-        # 查找对应 Y_ideal
-        y_ideal_vals = []
-        for x, ideal_func in zip(x_vals, ideal_functions):
-            ideal_y = self.ideal_df.loc[self.ideal_df["x"] == x, ideal_func].values
-            y_ideal_vals.append(ideal_y[0] if len(ideal_y) > 0 else None)
 
         plt.figure(figsize=(8, 6))
         plt.scatter(x_vals, y_test_vals, c="red", s=10, label="Test Data", alpha=0.7)
         plt.scatter(x_vals, y_ideal_vals, c="green", s=10, label="Matched Ideal Function", alpha=0.7)
-        plt.scatter(x_vals_unmatch, y_vals_unmatch, c="gray", s=10, label="Unmatched X", alpha=0.7)
+        plt.scatter(x_vals_to_match, y_vals_to_match, c="gray", s=10, label="Unmatched X", alpha=0.7)
         plt.yticks(np.arange(-40, 40, 5))
         plt.xlabel("X")
         plt.ylabel("Y")
@@ -77,7 +61,6 @@ class Visualizer:
         self.db = db_connector
         self.test_mapping_df = pd.read_sql("SELECT * FROM test_mapping", self.db.conn)
         self.ideal_df = pd.read_sql("SELECT * FROM ideal_functions", self.db.conn)
-
         self.analyzer = ErrorAnalyzer(self.test_mapping_df)
         self.plotter = Plotter(self.test_mapping_df, self.ideal_df)
 
@@ -102,10 +85,14 @@ def main():
 
     # 先创建 TrainDataloader 和 FunctionDataloader
     train_loader = TrainDataloader(db_connector)
+    train_loader.viz_df()
     function_loader = FunctionDataloader(db_connector)
+    function_loader.viz_df()
+    test_loader = TestDataloader(db_connector)
+    test_loader.viz_df()
 
     # 传入 train_loader 和 function_loader  
-    tester = Tester(db_connector, train_loader, function_loader, match_thresh=np.sqrt(2))
+    tester = Tester(db_connector, train_loader, function_loader, test_loader, match_thresh=np.sqrt(2))
     matched_test_data, unmatched_test_data = tester.run()
 
     # **运行可视化**
@@ -115,5 +102,3 @@ def main():
     db_connector.conn.close()
 
 main()
-
-#X, Y, Delta_Y, Ideal_Function, Y_ideal

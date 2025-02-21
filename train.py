@@ -16,22 +16,22 @@ class Trainer():
 
         # 遍历训练数据的 4 个 Y 列
         for y_train_col in ["y1", "y2", "y3", "y4"]:
-            min_mse = float('inf')  # 设定初始最小误差为无穷大
+            min_sse = float('inf')  # 设定初始最小误差为无穷大
             best_function = None
 
             # 遍历 50 个理想函数
             for y_ideal_col in [f"y{i+1}" for i in range(50)]:
-                # 计算 MSE（只对相同 X 的数据计算）
-                mse = np.mean((self.train_loader.df[y_train_col] - self.function_loader.df[y_ideal_col]) ** 2)
+                # 计算 SSE（只对相同 X 的数据计算）
+                sse = np.sum((self.train_loader.df[y_train_col] - self.function_loader.df[y_ideal_col]) ** 2)
 
                 # 选择误差最小的理想函数
-                if mse < min_mse:
-                    min_mse = mse
+                if sse < min_sse:
+                    min_sse = sse
                     best_function = y_ideal_col
 
             # 记录当前训练数据对应的最优理想函数
             best_functions[y_train_col] = best_function
-            print(f"Training function: {y_train_col} the best matched function is {best_function}, MSE = {min_mse:.6f}")
+            print(f"Training function: {y_train_col} the best matched function is {best_function}, SSE = {min_sse:.6f}")
         return best_functions
 
     def dump_ideal(self, best_functions):
@@ -61,7 +61,7 @@ def main():
     db_connector =DBConnector(db_path="/Users/lincong/Desktop/python_course/assignment/Dataset/functions.db")
     train_loader = TrainDataloader(db_connector)
     function_loader =FunctionDataloader(db_connector)
-    
+
     trainer = Trainer(db_connector, train_loader, function_loader)
     best_functions = trainer.train()
     trainer.dump_ideal(best_functions)
