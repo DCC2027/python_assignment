@@ -4,40 +4,54 @@ import numpy as np
 from loader import *
 
 class Trainer():
-    """_summary_
+    """
+    Trainer class for finding the best matching ideal functions for training data
     """
     def __init__(self, db_connector, train_loader, function_loader):
+        """
+        Initialize the Trainer with database connector and data loaders
+
+        Args::
+        db_connector: Database connection instance.
+        train_loader: Data loader for training data.
+        function_loader: Data loader for ideal functions.
+        """       
         self.db = db_connector
         self.train_loader = train_loader
         self.function_loader = function_loader
-        # 连接数据库
+        
 
     def train(self,):
-        # 存储最优匹配的理想函数
+        """
+        Perform training by finding the best matching ideal function for each training dataset column
+
+        Returns:
+        dict: A dictionary mapping each training function to its best matching ideal function
+        """
         best_functions = {}
 
-        # 遍历训练数据的 4 个 Y 列
         for y_train_col in ["y1", "y2", "y3", "y4"]:
-            min_sse = float('inf')  # 设定初始最小误差为无穷大
+            min_sse = float('inf')  
             best_function = None
 
-            # 遍历 50 个理想函数
             for y_ideal_col in [f"y{i+1}" for i in range(50)]:
-                # 计算 SSE（只对相同 X 的数据计算）
                 sse = np.sum((self.train_loader.df[y_train_col] - self.function_loader.df[y_ideal_col]) ** 2)
 
-                # 选择误差最小的理想函数
                 if sse < min_sse:
                     min_sse = sse
                     best_function = y_ideal_col
 
-            # 记录当前训练数据对应的最优理想函数
             best_functions[y_train_col] = best_function
             print(f"Training function: {y_train_col} the best matched function is {best_function}, SSE = {min_sse:.6f}")
         return best_functions
 
     def dump_ideal(self, best_functions):
-        # 创建匹配表（如果不存在）
+        """
+        Save the best function mappings into the database
+
+        Args:
+        best_functions (dict): Dictionary mapping training functions to ideal functions.
+        """
         self.db.cursor.execute("""
         CREATE TABLE IF NOT EXISTS best_function_mapping (
             train_function TEXT PRIMARY KEY,
@@ -45,20 +59,20 @@ class Trainer():
         );
         """)
 
-        # 清空旧数据
         self.db.cursor.execute("DELETE FROM best_function_mapping")
 
-        # 插入新的最佳匹配数据
         for train_func, ideal_func in best_functions.items():
             self.db.cursor.execute("INSERT INTO best_function_mapping (train_function, ideal_function) VALUES (?, ?)", (train_func, ideal_func))
 
-        # 提交 & 关闭
         self.db.conn.commit()
         self.db.conn.close()
 
         print("Best matched funcs save in dataset！")
 
 def main():
+    """
+    Main function to execute the training process
+    """
     print("================performing training=================")
     db_connector =DBConnector(db_path="/Users/lincong/Desktop/python_course/assignment/Dataset/functions.db")
     train_loader = TrainDataloader(db_connector)
@@ -69,6 +83,9 @@ def main():
     trainer.dump_ideal(best_functions)
 
 def train_unit_test():
+    """
+    Perform a unit test to validate the training function
+    """
     print("===============performing unit test================")
     db_connector =DBConnector(db_path="/Users/lincong/Desktop/python_course/assignment/Dataset/functions.db")
     fake_train_loader = FunctionDataloader(db_connector)

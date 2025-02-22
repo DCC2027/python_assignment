@@ -6,13 +6,26 @@ from test import *
 from train import *
 
 
-### **误差分析类**
 class ErrorAnalyzer:
+    """
+    Class for analyzing errors in test data matching.
+    """
     def __init__(self, test_mapping_df):
+        """
+        Initialize the ErrorAnalyzer with the test mapping DataFrame.
+
+        Parameters:
+        test_mapping_df (DataFrame): DataFrame containing test data and their corresponding matches.
+        """
         self.test_mapping_df = test_mapping_df
 
     def compute_statistics(self):
-        """计算误差统计"""
+        """
+        Compute error statistics.
+
+        Returns:
+        dict: Dictionary containing mean error, max error, standard deviation, and count of matched points.
+        """
         delta_y = self.test_mapping_df["Delta_Y"]
         stats = {
             "mean_error": np.mean(delta_y),
@@ -23,30 +36,49 @@ class ErrorAnalyzer:
         return stats
 
     def save_results(self, filename="test_mapping_results.csv"):
-        """将匹配数据保存到 CSV"""
+        """
+        Save the matched data to a CSV file.
+
+        Parameters:
+        filename (str): The name of the file to save the results to. Defaults to "test_mapping_results.csv".
+        """
         self.test_mapping_df.to_csv(filename, index=False)
-        print(f"数据已保存为 {filename}")
+        print(f"Data saved as {filename}")
 
 
-### **绘图类**
 class Plotter:
+    """
+    Class for plotting test data against ideal functions.
+    """
     def __init__(self, test_mapping_df, ideal_df):
+        """
+        Initialize the Plotter with test mapping and ideal function DataFrames.
+
+        Parameters:
+        test_mapping_df (DataFrame): DataFrame containing test data and their corresponding matches.
+        ideal_df (DataFrame): DataFrame containing ideal function data.
+        """
         self.test_mapping_df = test_mapping_df
         self.ideal_df = ideal_df
 
     def plot_test_vs_ideal(self, unmatched_test_df):
-        """绘制测试数据 vs. 匹配理想函数"""
+        """
+        Plot test data versus matched ideal functions.
+
+        Parameters:
+        unmatched_test_df (DataFrame): DataFrame containing unmatched test data.
+        """
         x_vals = self.test_mapping_df["X"].values
         y_test_vals = self.test_mapping_df["Y"].values
-        x_vals_to_match = unmatched_test_df["X"].values
-        y_vals_to_match = unmatched_test_df["Y_test"].values
+        x_vals_unmatch = unmatched_test_df["X"].values
+        y_vals_unmatch = unmatched_test_df["Y_test"].values
         y_ideal_vals = self.test_mapping_df["Best_ideal_y"].values
 
 
         plt.figure(figsize=(8, 6))
         plt.scatter(x_vals, y_test_vals, c="red", s=10, label="Test Data", alpha=0.7)
         plt.scatter(x_vals, y_ideal_vals, c="green", s=10, label="Matched Ideal Function", alpha=0.7)
-        plt.scatter(x_vals_to_match, y_vals_to_match, c="gray", s=10, label="Unmatched X", alpha=0.7)
+        plt.scatter(x_vals_unmatch, y_vals_unmatch, c="gray", s=10, label="Unmatched X", alpha=0.7)
         plt.yticks(np.arange(-40, 40, 5))
         plt.xlabel("X")
         plt.ylabel("Y")
@@ -55,27 +87,43 @@ class Plotter:
         plt.show()
 
 
-### **可视化管理类**
 class Visualizer:
+    """
+    Class to manage the visualization process.
+    """
     def __init__(self, db_connector):
+        """
+        Initialize the Visualizer with a database connector.
+
+        Parameters:
+        db_connector: Database connection instance.
+        """
         self.db = db_connector
-        self.test_mapping_df = pd.read_sql("SELECT * FROM test_mapping", self.db.conn)
-        self.ideal_df = pd.read_sql("SELECT * FROM ideal_functions", self.db.conn)
+        try:
+            self.test_mapping_df = pd.read_sql("SELECT * FROM test_mapping", self.db.conn)
+            self.ideal_df = pd.read_sql("SELECT * FROM ideal_functions", self.db.conn)
+        except Exception as e:
+            raise DataLoadingError(f"Failed to load data in visualizer: {e}")
+        
         self.analyzer = ErrorAnalyzer(self.test_mapping_df)
         self.plotter = Plotter(self.test_mapping_df, self.ideal_df)
 
-        print("读取存储的匹配数据", self.test_mapping_df.head(10))
+        print("Loaded stored matching data", self.test_mapping_df.head(10))
 
     def run(self, unmatched_test_df):
-        """运行可视化流程"""
+        """
+        Execute the visualization process.
+
+        Parameters:
+        unmatched_test_df (DataFrame): DataFrame containing unmatched test data.
+        """
         stats = self.analyzer.compute_statistics()
-        print(f"平均误差: {stats['mean_error']:.6f}")
-        print(f"最大误差: {stats['max_error']:.6f}")
-        print(f"误差标准差: {stats['std_dev']:.6f}")
-        print(f"匹配到的测试点总数: {stats['matched_points']}")
+        print(f"Mean error: {stats['mean_error']:.6f}")
+        print(f"Max error: {stats['max_error']:.6f}")
+        print(f"Standard deviation of error: {stats['std_dev']:.6f}")
+        print(f"Total number of matched test points: {stats['matched_points']}")
 
         self.analyzer.save_results()
-        # self.plotter.plot_error_histogram()
         self.plotter.plot_test_vs_ideal(unmatched_test_df)
 
 
@@ -83,19 +131,16 @@ class Visualizer:
 def main():
     db_connector = DBConnector(db_path="/Users/lincong/Desktop/python_course/assignment/Dataset/functions.db")
 
-    # 先创建 TrainDataloader 和 FunctionDataloader
     train_loader = TrainDataloader(db_connector)
     train_loader.viz_df()
     function_loader = FunctionDataloader(db_connector)
     function_loader.viz_df()
     test_loader = TestDataloader(db_connector)
     test_loader.viz_df()
-
-    # 传入 train_loader 和 function_loader  
+  
     tester = Tester(db_connector, train_loader, function_loader, test_loader, match_thresh=np.sqrt(2))
     matched_test_data, unmatched_test_data = tester.run()
 
-    # **运行可视化**
     visualizer = Visualizer(db_connector)
     visualizer.run(pd.DataFrame(unmatched_test_data, columns=["X", "Y_test", "Delta_Y", "Ideal_Function", "Y_ideal"]))
 
