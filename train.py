@@ -110,6 +110,8 @@ def train_unit_test():
         exit(0)
     print("====================================================")
 
+def new_func():
+    print("This is a new function.")
 
 train_unit_test()
 
